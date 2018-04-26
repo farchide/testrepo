@@ -104,7 +104,8 @@ base_beginning() {
     #
     # Install and setup the prerequisites
     #
-    sudo yum -y install bind bind-utils
+    yum check-update
+    yum -y install bind bind-utils
     if ! yum list installed bind
     then
         echo "Unable to install package 'bind', manual troubleshoot required."

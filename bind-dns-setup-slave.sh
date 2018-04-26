@@ -45,11 +45,7 @@
 #
 # Parse options: 
 #  -d $internal_fqdn_suffix
-#Usage: bind-dns-setup-slave.sh -d my.net -m 192.168.168.168 -f 8.8.8.8
-#    -d domain (same as in master script)
-#    -m master DNS server IP&
-#    -f forwarder IP (optional)
-     
+#
 OPTIND=1
 # Initialize our own variables:
 internal_fqdn_suffix=""
@@ -113,7 +109,8 @@ base_beginning() {
     #
     # Install and setup the prerequisites
     #
-    sudo yum -y install bind bind-utils
+    yum check-update
+    yum -y install bind bind-utils
     if ! yum list installed bind
     then
         echo "Unable to install package 'bind', manual troubleshoot required."
@@ -302,7 +299,7 @@ base_end() {
     #
     echo ""
     echo "-- STOP -- STOP -- STOP --"
-    echo "Go to -- portal.azure.com -- and change Azure DNS to point to the private IP of this host: ${internal_ip}"
+    echo "Go to -- portal.azure.com -- and change Azure DNS to point to the private IP of this host: ${master_ip}"
     #printf "Press [Enter] once you have gone to portal.azure.com and this is completed."
     #read -r
 
@@ -310,7 +307,7 @@ base_end() {
     # Loop until DNS nameserver updates have propagated to /etc/resolv.conf
     # NB: search server updates don't take place until dhclient-exit-hooks have executed
     #
-    until grep "nameserver ${internal_ip}" /etc/resolv.conf
+    until grep "nameserver ${master_ip}" /etc/resolv.conf
     do
         service network restart
         echo "Waiting for Azure DNS nameserver updates to propagate, this usually takes less than 2 minutes..."
@@ -325,28 +322,14 @@ base_end() {
 
     if ! hostname -f
     then
-        echo "Unable to run the command 'hostname -f' (check 1 of 4)"
+        echo "Unable to run the command 'hostname -f' (check 1 of 2)"
         echo "Run the reset script and then try this script again."
         exit 1
     fi
 
     if ! hostname -i
     then
-        echo "Unable to run the command 'hostname -i' (check 2 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
-    fi
-
-    if ! host "$(hostname -f)"
-    then
-        echo "Unable to run the command 'host \`hostname -f\`' (check 3 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
-    fi
-
-    if ! host "$(hostname -i)"
-    then
-        echo "Unable to run the command 'host \`hostname -i\`' (check 4 of 4)"
+        echo "Unable to run the command 'hostname -i' (check 2 of 2)"
         echo "Run the reset script and then try this script again."
         exit 1
     fi
