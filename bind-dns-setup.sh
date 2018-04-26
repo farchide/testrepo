@@ -50,12 +50,15 @@ OPTIND=1
 # Initialize our own variables:
 internal_fqdn_suffix=""
 nameserver_ip=""
+skip_dns_check=0
 
-while getopts "d:f:" opt; do
+while getopts "d:f:s" opt; do
     case "$opt" in
     d)  internal_fqdn_suffix=$OPTARG
         ;;
     f)  nameserver_ip=$OPTARG
+        ;;
+    s)  skip_dns_check=1
         ;;
     esac
 done
@@ -289,58 +292,60 @@ EOF
 # DNS settings then makes sure everything works as expected
 #
 base_end() {
-    #
-    # Now it's time to update Azure DNS settings in portal
-    #
-    echo ""
-    echo "-- STOP -- STOP -- STOP --"
-    echo "Go to -- portal.azure.com -- and change Azure DNS to point to the private IP of this host: ${internal_ip}"
-    #printf "Press [Enter] once you have gone to portal.azure.com and this is completed."
-    #read -r
+    if [ $skip_dns_check -eq 0 ]; then
+        #
+        # Now it's time to update Azure DNS settings in portal
+        #
+        echo ""
+        echo "-- STOP -- STOP -- STOP --"
+        echo "Go to -- portal.azure.com -- and change Azure DNS to point to the private IP of this host: ${internal_ip}"
+        #printf "Press [Enter] once you have gone to portal.azure.com and this is completed."
+        #read -r
 
-    #
-    # Loop until DNS nameserver updates have propagated to /etc/resolv.conf
-    # NB: search server updates don't take place until dhclient-exit-hooks have executed
-    #
-    until grep "nameserver ${internal_ip}" /etc/resolv.conf
-    do
-        service network restart
-        echo "Waiting for Azure DNS nameserver updates to propagate, this usually takes less than 2 minutes..."
-        sleep 10
-    done
+        #
+        # Loop until DNS nameserver updates have propagated to /etc/resolv.conf
+        # NB: search server updates don't take place until dhclient-exit-hooks have executed
+        #
+        until grep "nameserver ${internal_ip}" /etc/resolv.conf
+        do
+            service network restart
+            echo "Waiting for Azure DNS nameserver updates to propagate, this usually takes less than 2 minutes..."
+            sleep 10
+        done
 
 
-    #
-    # Check that everything is working
-    #
-    echo "Running sanity checks:"
+        #
+        # Check that everything is working
+        #
+        echo "Running sanity checks:"
 
-    if ! hostname -f
-    then
-        echo "Unable to run the command 'hostname -f' (check 1 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
-    fi
+        if ! hostname -f
+        then
+            echo "Unable to run the command 'hostname -f' (check 1 of 4)"
+            echo "Run the reset script and then try this script again."
+            exit 1
+        fi
 
-    if ! hostname -i
-    then
-        echo "Unable to run the command 'hostname -i' (check 2 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
-    fi
+        if ! hostname -i
+        then
+            echo "Unable to run the command 'hostname -i' (check 2 of 4)"
+            echo "Run the reset script and then try this script again."
+            exit 1
+        fi
 
-    if ! host "$(hostname -f)"
-    then
-        echo "Unable to run the command 'host \`hostname -f\`' (check 3 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
-    fi
+        if ! host "$(hostname -f)"
+        then
+            echo "Unable to run the command 'host \`hostname -f\`' (check 3 of 4)"
+            echo "Run the reset script and then try this script again."
+            exit 1
+        fi
 
-    if ! host "$(hostname -i)"
-    then
-        echo "Unable to run the command 'host \`hostname -i\`' (check 4 of 4)"
-        echo "Run the reset script and then try this script again."
-        exit 1
+        if ! host "$(hostname -i)"
+        then
+            echo "Unable to run the command 'host \`hostname -i\`' (check 4 of 4)"
+            echo "Run the reset script and then try this script again."
+            exit 1
+        fi
     fi
 
     echo ""
